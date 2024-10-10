@@ -17,7 +17,7 @@
 The framework of **CFBNL** is depicted as follow:
 ![CFBNL](./Frame.png)
 
-## Brain Network Visualization on HCP Gender
+## Brain Network Visualization on DynHCP Gender
 To illustrate the necessity of the four-scale brain network division proposed in this paper, we have followed the reviewer’s suggestion to visualize and compare the brain networks at each scale. For the sample-scale and subject-scale, we averaged the brain network weights of male and female subjects, and then visualized the networks using the method described in the paper. To compare with the project-scale network, we further averaged the networks learned at the other three scales and visualized the result. 
 
 From the visualizations, we can observe that the networks obtained at different scales cannot be simply transformed into each other through averaging, clearly demonstrating the necessity of our four-scale division. However, the averaged networks show a consistent distribution of high-degree and low-degree nodes across the four scales. The differences observed stem from how sample information is integrated at each scale, which affects the learned networks. The exact mechanisms behind this effect are beyond the scope of this paper and will be explored in future work. These results also indicate that our proposed **CFBNL** method is effective at modeling both the commonalities and differences in brain networks across different scales.
