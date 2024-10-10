@@ -6,7 +6,7 @@
 - Subject-Scale aggregates samples from the same subject (individual/participand, etc.), preserving personal variability (e.g., brain fingerprinting).
 - Group-Scale identifies shared patterns between groups (categories/classes), capturing representative group-level patterns (e.g., gender, mental disease).
 - Project-Scale uncovers dataset-wide patterns, providing insights that cannot be derived from individual groups alone (e.g., brain atlas, human connectome project).
-![Research Scales](./Scene.pdf)
+![Research Scales](./Scene.png)
 
 **CFBNL** learns brain networks using method derived from Graph Structure Learning (GSL) research. Related works of GSL can be found in [Awesome GSL]{https://github.com/GSL-Benchmark/Awesome-Graph-Structure-Learning}. According to the target scale, **CFBNL** learns brain networks as follow:
 - Sample-scale: **CFBNL** learns multiple brain networks for each subject according to each sample in the dataset. Each brain network depicts a transient co-activivy of variables in the sample. The brain function of a subject could be modeled by multiple brain networks (dynamic brain network).
@@ -15,10 +15,10 @@
 - Project-scale: **CFBNL** learns a shared brain network for all the subjects based on all of their samples in a dataset. A dataset is typically collected for a project. And researchers might be curious about the common features of all the subjects in the project.
 
 The framework of **CFBNL** is depicted as follow:
-![CFBNL](./Frame.pdf)
+![CFBNL](./Frame.png)
 
 ## Brain Network Visualization on HCP Gender
-[BNVis](./GenderNets.pdf)
+[BNVis](./Gender.png)
 
 ## Environment
 - pytorch
@@ -32,8 +32,8 @@ The framework of **CFBNL** is depicted as follow:
 - [SLIM]{https://fcon_1000.projects.nitrc.org/indi/retro/southwestuni_qiu_index.html}
 
 ## Tools for Dataset Preprocess
-- [DPABI]{rfmri.org/DPABI}
-- [EEGLab]{sccn.ucsd.edu/eeglab/index.php}
+- [DPABI]{https://rfmri.org/DPABI}
+- [EEGLab]{https://sccn.ucsd.edu/eeglab/index.php}
 - 
 
 ## Use
