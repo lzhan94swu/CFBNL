@@ -18,13 +18,14 @@ The framework of **CFBNL** is depicted as follow:
 ![CFBNL](./Frame.png)
 
 ## Brain Network Visualization on HCP Gender
-![BNVis](./Gender.png)
+[BNVis](./Gender.png)
 
 ## Environment
-- pytorch
-- pytorch geometric
-- numpy
-- sklearn
+- cuda 11.8
+- pytorch == 2.3.1
+- pytorch geometric == 2.5.3
+- numpy == 1.26.4
+- sklearn == 1.5.1
 
 ## Dataset
 - [HCP]{https://www.humanconnectome.org}, [NeuroGraph]{https://anwar-said.github.io/anwarsaid/neurograph.html}
@@ -34,7 +35,6 @@ The framework of **CFBNL** is depicted as follow:
 ## Tools for Dataset Preprocess
 - [DPABI]{https://rfmri.org/DPABI}
 - [EEGLab]{https://sccn.ucsd.edu/eeglab/index.php}
-- 
 
 ## Use
 The model can be trained and tested by the following command
