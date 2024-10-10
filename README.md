@@ -8,7 +8,7 @@
 - Project-Scale uncovers dataset-wide patterns, providing insights that cannot be derived from individual groups alone (e.g., brain atlas, human connectome project).
 ![Research Scales](./Scene.png)
 
-**CFBNL** learns brain networks using method derived from Graph Structure Learning (GSL) research. Related works of GSL can be found in [Awesome GSL]{https://github.com/GSL-Benchmark/Awesome-Graph-Structure-Learning}. According to the target scale, **CFBNL** learns brain networks as follow:
+**CFBNL** learns brain networks using method derived from Graph Structure Learning (GSL) research. Related works of GSL can be found in [**Awesome GSL**]{https://github.com/GSL-Benchmark/Awesome-Graph-Structure-Learning}. According to the target scale, **CFBNL** learns brain networks as follow:
 - Sample-scale: **CFBNL** learns multiple brain networks for each subject according to each sample in the dataset. Each brain network depicts a transient co-activivy of variables in the sample. The brain function of a subject could be modeled by multiple brain networks (dynamic brain network).
 - Subject-scale: **CFBNL** learns brain network for each subject based on their corresponding samples in the dataset. The brain network is learned by merging information from multiple homologic samples. The brain function is modeled by a single brain network.
 - Grouph-scale: **CFBNL** learns a shared brain network for all the subjects based on their corresponding samples in a group. The learned brain network reflects the common property of all the subjects in the corresponding group.
