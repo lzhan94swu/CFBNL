@@ -18,7 +18,7 @@ The framework of **CFBNL** is depicted as follow:
 ![CFBNL](./Frame.png)
 
 ## Brain Network Visualization on HCP Gender
-[BNVis](./Gender.png)
+![BNVis](./Gender.png)
 
 ## Environment
 - cuda 11.8
