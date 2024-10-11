@@ -23,6 +23,8 @@ To illustrate the necessity of the four-scale brain network division proposed in
 From the visualizations, we can observe that the networks obtained at different scales cannot be simply transformed into each other through averaging, clearly demonstrating the necessity of our four-scale division. However, the averaged networks show a consistent distribution of high-degree and low-degree nodes across the four scales. The differences observed stem from how sample information is integrated at each scale, which affects the learned networks. The exact mechanisms behind this effect are beyond the scope of this paper and will be explored in future work. These results also indicate that our proposed **CFBNL** method is effective at modeling both the commonalities and differences in brain networks across different scales.
 ![BNVis](./NetViz.png)
 
+## Balance between Classification and Contrastive Loss
+We add an coefficient on the contrastive loss ($\mathcal{L}_1$ in the paper) to see how the contrastive loss effect on the finall prediction. The results are shown as below. We can see that the performance is further enhanced with a proper coefficient. However, the contribution of category loss (cross entropy) is dominant. And the contrastive loss we disigned is to keep the information from homologic samples (samples of the same subject) more alike. This mechanism works as an adaptive average on the homologic samples.
 
 ## Environment
 - cuda 11.8
