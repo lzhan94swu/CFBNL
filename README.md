@@ -25,7 +25,8 @@ From the visualizations, we can observe that the networks obtained at different 
 
 ## Balance between Classification and Contrastive Loss
 We add an coefficient $\beta$ on the contrastive loss ($\mathcal{L}_1$ in the paper) to see how the contrastive loss effect on the finall prediction. The results are shown as below. We can see that the performance is further enhanced with a proper coefficient. However, the contribution of category loss (cross entropy) is dominant. And the contrastive loss we disigned is to ensure the information from homologic samples (samples of the same subject) more alike. This mechanism is in line with the assuption that the brain state of a person is stable. Thus, it works as an adaptive average on the homologic samples to diminish the random error while keeping the useful information for prediction.
-![Balance]{./beta.png}
+![BNVis](./beta.png)
+
 We also recognize a record error of inter-subject prediction on DynHCP Gender in the submitted paper and corrected it in the results above. We will fix this error in the final edition. Sorry for all the misinformation!
 
 ## Environment
