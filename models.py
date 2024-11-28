@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-F.gumbel_softmax
+# import torch.nn.functional as F
 
 Tensor = torch.Tensor
 
 
-class CGSL(nn.Module):
+class GIM(nn.Module):
     def __init__(self, gnn, out_feats, num_nodes, num_edges, num_inds=None, num_cls=None, num_samples=None, net_type='ind', use_init_struc=False, init_struc=None, structure_learning=False, batch_size=32):
-        super(CGSL, self).__init__()
+        super(GIM, self).__init__()
         self.num_edges = int(num_edges / 100 * num_nodes * (num_nodes - 1) / 2)
         self.gnn = gnn
         self.net_type = net_type
@@ -46,37 +45,58 @@ class CGSL(nn.Module):
 
         return output, embeddings, adj_matrix
 
-    def gumbel_softkmax(self, logits: Tensor, tau: float = 1, k = 20, hard: bool = False) -> Tensor:
+    def gumbel_softkmax(self, logits: Tensor, tau: float = 0.5, k: int = 20, hard: bool = False) -> Tensor:
         gumbels = (
             -torch.empty_like(logits, memory_format=torch.legacy_contiguous_format).exponential_().log()
         )  # ~Gumbel(0,1)
         gumbels = (logits + gumbels) / tau  # ~Gumbel(logits,tau)
-        y_soft = ((gumbels + gumbels.transpose(1, 2))/2).view(logits.shape[0], -1).softmax(-1).view_as(logits)
+        y_soft = (torch.sigmoid(gumbels)/2+torch.sigmoid(gumbels.transpose(1, 2))/2).view(logits.shape[0], -1).view_as(logits) #.softmax(-1)
 
+        k = (y_soft-torch.diag_embed(torch.diagonal(y_soft, dim1=-2, dim2=-1))/2).sum(dim=(-2, -1)).int()
         if hard:
-            # Straight through.
-            upper_triangular = torch.triu(y_soft)
-            y_soft_tmp = upper_triangular.view(logits.shape[0], -1)
             if type(k) == int:
+                # Straight through.
+                upper_triangular = torch.triu(y_soft)
+                y_soft_tmp = upper_triangular.view(logits.shape[0], -1)
                 index = y_soft_tmp.topk(k)[1]
-            # TODO: k is a tensor
+                y_hard = torch.zeros_like(logits.view_as(y_soft_tmp), memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
             else:
-                top_k_results = []
-                assert k.shape[0] == y_soft_tmp.shape[0]
-                sorted_indices = torch.argsort(y_soft_tmp, axis=1)
-                for row, k in zip(sorted_indices, y_soft_tmp):
-                    # 选取每行中最大的 K 个元素的索引
-                    top_k_indices = row[-k:]
-                    # 使用高级索引从原数组中提取元素
-                    top_k_elements = y_soft_tmp[torch.arange(y_soft_tmp.shape[0]), top_k_indices]
-                    top_k_results.append(top_k_elements)
-                index = torch.array(top_k_results)
 
-            y_hard = torch.zeros_like(logits.view_as(y_soft_tmp), memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
-            y_hard = y_hard.view_as(logits)
-            y_hard = y_hard + y_hard.transpose(1, 2) - torch.diag_embed(torch.diagonal(y_hard, dim1=-2, dim2=-1))
+                B, N, M = y_soft.shape
+                device = y_soft.device
+
+                # 展平每个矩阵
+                batch_flat = y_soft.view(B, -1)  # 形状 (B, N*M)
+
+                # 对每个矩阵排序
+                sorted_values, sorted_indices = torch.sort(batch_flat, dim=1, descending=True)  # 形状 (B, N*M)
+
+                # 生成每个矩阵的 k 索引范围
+                range_indices = torch.arange(N*M, device=device).unsqueeze(0).expand(B, -1)  # 形状 (B, N*M)
+                k_expand = k.unsqueeze(1)  # 形状 (B, 1)
+                mask = range_indices < k_expand  # 形状 (B, N*M)
+
+                # 创建一个全零的张量来存储结果
+                output_flat = torch.zeros_like(batch_flat)  # 形状 (B, N*M)
+
+                # 只保留每个矩阵的 top-k 元素，其余置零
+                topk_values = sorted_values * mask.float()  # 形状 (B, N*M)
+
+                # 获取排序后的索引，并在原始位置上放置 top-k 元素
+                output_flat.scatter_(1, sorted_indices, 1.0)
+
+                # 将结果重新 reshape 回原始矩阵形状
+                # y_hard = output_flat.view(B, N, M)
+
+
+
+                # index = y_soft_tmp.topk(k)[1]
+
+                # y_hard = torch.zeros_like(logits.view_as(y_soft_tmp), memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
+                y_hard = output_flat.view_as(logits)
+            y_hard = (y_hard + y_hard.transpose(1, 2)).clamp(0, 1)
             ret = y_hard - y_soft.detach() + y_soft
         else:
             # Reparametrization trick.
             ret = y_soft
-        return ret
+        return ret, y_soft

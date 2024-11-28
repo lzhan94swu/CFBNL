@@ -2,20 +2,15 @@ import os
 import gc
 import argparse
 
-from torch import _scaled_dot_product_attention_math
-
 from models import *
 from gnn_model import *
 from utils import *
 import configs
 
-import time
-
-
 def main(args):
     # about dataset
     data_name = args.data_name
-    if data_name == 'DynHCP':
+    if data_name == 'bciv' or data_name == 'TUDataset' or data_name == 'DynHCP':
         sub_data_type = args.sub_data_type
     else:
         sub_data_type = None
@@ -51,7 +46,7 @@ def main(args):
     # Set device
     device = torch.device(cuda_device if torch.cuda.is_available() else 'cpu')
 
-    init_strucs, graph_feats, all_nets_index, ind_labels, state_labels = read_graph_matrices(data_name, sub_type=sub_data_type)
+    init_strucs, graph_feats, all_nets_index, ind_labels, state_labels = read_graph_matrices(data_name, sub_type=sub_data_type, net_type=net_type)
     num_nodes = graph_feats[0].shape[0]
     if use_init_struc == True:
         num_edges = int(np.array([np.count_nonzero(init_struc) for init_struc in init_strucs], dtype=np.int32).mean())
@@ -61,10 +56,15 @@ def main(args):
     in_feats = graph_feats[0].shape[1]
 
     # Split data into train, validation, and test sets
-    split_type_dict = {'by_ind': data_set_split_by_ind, 'across_ind': data_set_split_across_ind}
-    [train_index, val_index, test_index,
-    train_ind_labels, val_ind_labels, test_ind_labels,
-    train_state_labels, val_state_labels, test_state_labels] = split_type_dict[split_type](all_nets_index, ind_labels, state_labels, rate=0.2, random_state=42)
+    split_type_dict = {'random': data_set_split_random, 'by_ind': data_set_split_by_ind, 'across_ind': data_set_split_across_ind, 'loocv': data_set_split_loocv}
+    if split_type == 'loocv':
+        [train_index, val_index, test_index,
+        train_ind_labels, val_ind_labels, test_ind_labels,
+        train_state_labels, val_state_labels, test_state_labels] = split_type_dict[split_type](all_nets_index, ind_labels, state_labels, test_ind)
+    else:
+        [train_index, val_index, test_index,
+        train_ind_labels, val_ind_labels, test_ind_labels,
+        train_state_labels, val_state_labels, test_state_labels] = split_type_dict[split_type](all_nets_index, ind_labels, state_labels, rate=0.2, random_state=42)
 
     train_feats = graph_feats[train_index]
     val_feats = graph_feats[val_index]
@@ -74,21 +74,25 @@ def main(args):
     gnn = GNNModel(in_feats, hidden_feats, out_feats, num_nodes, conv, read_out_type).to(device)
 
     # Create your contrastive learning model
-    model = CGSL(gnn,
-                   out_feats,
-                   num_nodes,
-                   num_edges,
-                   num_cls=num_cls,
-                   num_inds=num_inds,
-                   num_samples=num_samples,
-                   net_type=net_type,
-                   use_init_struc=use_init_struc,
-                   init_struc=init_strucs,
-                   structure_learning=structure_learning,
-                   batch_size=batch_size).to(device)
+    model = GIM(gnn,
+                out_feats,
+                num_nodes,
+                num_edges,
+                num_cls=num_cls,
+                num_inds=num_inds,
+                num_samples=num_samples,
+                net_type=net_type,
+                use_init_struc=use_init_struc,
+                init_struc=init_strucs,
+                structure_learning=structure_learning,
+                batch_size=batch_size).to(device)
 
     # Create your optimizer for contrastive learning
+    # opt_params1 = list(model.linear.parameters())
+    # opt_params1.append(model.nets)
     optimizer = torch.optim.Adam(model.parameters(), lr)
+    # optimizer2 = torch.optim.Adam(list(model.gnn.parameters())+list(model.linear.parameters()), lr_clf)
+    # optimizer2 = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Create the graph dataset loaders for train, validation, and test sets
     train_loader = graph_dataset_loader(train_feats, train_index, train_ind_labels, train_state_labels, batch_size)
@@ -99,9 +103,12 @@ def main(args):
     best_model_state_dict = None
     patience = 0
 
+    train_loss_rec, val_loss_rec, test_loss_rec, val_acc_rec, test_acc_rec, contrastive_loss_rec = [], [], [], [], [], []
+
     # Training loop for contrastive learning
     for _ in range(epochs):
         model.train()
+
         for batch in train_loader:
             # Move batch to device
             batch = [item.to(device) for item in batch]
@@ -117,9 +124,11 @@ def main(args):
 
             # Compute multi-classification loss
             loss1 = F.cross_entropy(logits, state_labels.long())
+
             if with_contrast == True:
                 loss2 = contrastive_loss(embeddings, ind_labels)
                 loss = loss1 + loss2
+                train_loss_rec.append(loss2.item())
             else:
                 loss = loss1
 
@@ -130,6 +139,7 @@ def main(args):
 
             # Print loss for monitoring
             # print(f"Multi-Classification - Epoch: {epoch+1}, Loss: {loss2.item()}")
+
         # Evaluation on validation set
         model.eval()
         correct = 0
@@ -159,7 +169,9 @@ def main(args):
 
         avg_val_loss = sum(val_losses) / len(val_losses)
         val_accuracy = correct / total
-        # print(f"Average Validation Loss: {avg_val_loss}, Accuracy: {val_accuracy}")
+        print(f"Average Validation Loss: {avg_val_loss}, Accuracy: {val_accuracy}")
+        val_loss_rec.append(avg_val_loss)
+        val_acc_rec.append(val_accuracy)
 
         # Early stopping based on validation accuracy
         if val_accuracy > best_val_accuracy:
@@ -207,7 +219,9 @@ def main(args):
 
         avg_test_loss = sum(test_losses) / len(test_losses)
         test_accuracy = correct / total
-        # print(f"Average Test Loss: {avg_test_loss}, Accuracy: {test_accuracy}")
+        print(f"Average Test Loss: {avg_test_loss}, Accuracy: {test_accuracy}")
+        test_loss_rec.append(avg_test_loss)
+        test_acc_rec.append(test_accuracy)
 
     # Evaluation on test set
     best_model_state_dict = torch.load(state_save_dir + f"best_model_state_dict_{data_name}_{sub_data_type}_{split_type}_{net_type}_{conv}.pth")
@@ -241,13 +255,18 @@ def main(args):
     avg_test_loss = sum(test_losses) / len(test_losses)
     Final_accuracy = correct / total
     print(f"Final Test Loss: {avg_test_loss}, Accuracy: {Final_accuracy}")
-    return Final_accuracy
+
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    return train_loss_rec, val_loss_rec, test_loss_rec, val_acc_rec, test_acc_rec, contrastive_loss_rec, Final_accuracy
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper-Parameters')
-    parser.add_argument('--data_name', type=str, default=configs.data_name, choices=['cog_state', 'slim', 'DynHCP'], help='The name of the selected dataset')
-    parser.add_argument('--sub_data_type', type=str, default=configs.sub_data_type, choices=['Age', 'Gender', 'Activity'], help='When choose bciv as the dataset, you can choose the sub dataset type')
-    parser.add_argument('--split_type', type=str, default=configs.split_type, choices=['by_ind', 'across_ind'], help='Choose the split type')
+    parser.add_argument('--data_name', type=str, default=configs.data_name, choices=['cog_state', 'slim', 'bciv', 'TUDataset', 'DynHCP'], help='The name of the selected dataset')
+    parser.add_argument('--sub_data_type', type=str, default=configs.sub_data_type, choices=['2a', '2b', 'ENZYMES', 'MUTAG', 'PROTEINS_full', None], help='When choose bciv as the dataset, you can choose the sub dataset type')
+    parser.add_argument('--split_type', type=str, default=configs.split_type, choices=['random', 'by_ind', 'loocv'], help='Choose the split type')
+    parser.add_argument('--test_ind', type=int, default=configs.test_ind, help='When choose loocv split, you need to choos a test index')
     parser.add_argument('--net_type', type=str, default=configs.net_type, choices=['group', 'cls', 'ind', 'samples'], help='The expected type of the learned network')
 
     parser.add_argument('--conv', type=str, default=configs.conv, choices=['gcn', 'sage', 'gat', 'gin'], help='The type of the graph convolution layer')
@@ -271,11 +290,31 @@ if __name__ == '__main__':
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.cuda.empty_cache()
 
-    print(args)
-    accs = []
-    for _ in range(5):
-        acc = main(args)
-        accs.append(acc)
-    print(f'Average accuracy: {np.mean(accs)}, std: {np.std(accs)}')
-    with open(f'./{args.data_name}_{args.sub_data_type}_{args.split_type}_{args.net_type}_{args.conv}.txt', 'w') as f:
-        f.write(f'Average accuracy: {np.mean(accs)}, std: {np.std(accs)}')
+    if args.with_contrast == True:
+        contrast = 'contrast'
+    else:
+        contrast = 'no_contrast'
+
+    # accs = []
+    if args.data_name == 'TUDataset' or args.data_name == 'DynHCP':
+        save_dir = f"./{contrast}_training_process/{args.data_name}_{args.sub_data_type}_{args.split_type}_{args.net_type}_{args.conv}/"
+    else:
+        save_dir = f"./{contrast}_training_process/{args.data_name}_{args.split_type}_{args.net_type}_{args.conv}/"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    for times in range(1):
+        train_loss_rec, val_loss_rec, test_loss_rec, val_acc_rec, test_acc_rec, contrastive_loss_rec, Final_accuracy = main(args)
+        torch.cuda.empty_cache()
+        if args.data_name == 'TUDataset' or args.data_name == 'DynHCP':
+            print("Final Test Accuracy of conv {} on data {}-{}: {}\n".format(args.conv, args.data_name, args.sub_data_type, Final_accuracy))
+        else:
+            print("Final Test Accuracy of conv {} on data {}: {}\n".format(args.conv, args.data_name, Final_accuracy))
+        # accs.append(Final_accuracy)
+        training_process = {'train_loss_rec': train_loss_rec, 'val_loss_rec': val_loss_rec, 'test_loss_rec': test_loss_rec, 'val_acc_rec': val_acc_rec, 'test_acc_rec': test_acc_rec, 'contrastive_loss_rec': contrastive_loss_rec}
+
+        with open(save_dir + "/training_process_{}.pkl".format(times), 'wb') as f:
+            pickle.dump(training_process, f)
+    # print('Avg acc: {}, std: {}'.format(np.mean(accs), np.std(accs)))
+        with open(save_dir + "/results.txt", 'w') as f:
+            f.writelines('Avg acc: {}\n'.format(np.mean(Final_accuracy)))
+    torch.cuda.empty_cache()
