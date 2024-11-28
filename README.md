@@ -1,4 +1,4 @@
-# **Offical Code for CFBNL submitted to KDD 25**
+# **Offical Code for CFBNL submitted to ICDE 25**
 
 ## Description
 **Contrastive Functional Brain Network Learning (CFBNL)** is designed to automatically learn brain network structures according to 4 distinct research scales, namely sample-scale, subject-scale, group-scale and group-scale, respectively. The description and typical scenario of these four scales are as follow:
@@ -8,26 +8,9 @@
 - Project-Scale uncovers dataset-wide patterns, providing insights that cannot be derived from individual groups alone (e.g., brain atlas, human connectome project).
 ![Research Scales](./Scene.png)
 
-**CFBNL** learns brain networks using method derived from Graph Structure Learning (GSL) research. Related works of GSL can be found in [**Awesome GSL**]{https://github.com/GSL-Benchmark/Awesome-Graph-Structure-Learning}. According to the target scale, **CFBNL** learns brain networks as follow:
-- Sample-scale: **CFBNL** learns multiple brain networks for each subject according to each sample in the dataset. Each brain network depicts a transient co-activivy of variables in the sample. The brain function of a subject could be modeled by multiple brain networks (dynamic brain network).
-- Subject-scale: **CFBNL** learns brain network for each subject based on their corresponding samples in the dataset. The brain network is learned by merging information from multiple homologic samples. The brain function is modeled by a single brain network.
-- Grouph-scale: **CFBNL** learns a shared brain network for all the subjects based on their corresponding samples in a group. The learned brain network reflects the common property of all the subjects in the corresponding group.
-- Project-scale: **CFBNL** learns a shared brain network for all the subjects based on all of their samples in a dataset. A dataset is typically collected for a project. And researchers might be curious about the common features of all the subjects in the project.
-
 The framework of **CFBNL** is depicted as follow:
 ![CFBNL](./Frame.png)
 
-## Brain Network Visualization on DynHCP Gender
-To illustrate the necessity of the four-scale brain network division proposed in this paper, we have followed the reviewer’s suggestion to visualize and compare the brain networks at each scale. For the sample-scale and subject-scale, we averaged the brain network weights of male and female subjects, and then visualized the networks using the method described in the paper. To compare with the project-scale network, we further averaged the networks learned at the other three scales and visualized the result. 
-
-From the visualizations, we can observe that the networks obtained at different scales cannot be simply transformed into each other through averaging, clearly demonstrating the necessity of our four-scale division. However, the averaged networks show a consistent distribution of high-degree and low-degree nodes across the four scales. The differences observed stem from how sample information is integrated at each scale, which affects the learned networks. The exact mechanisms behind this effect are beyond the scope of this paper and will be explored in future work. These results also indicate that our proposed **CFBNL** method is effective at modeling both the commonalities and differences in brain networks across different scales.
-![BNVis](./NetViz.png)
-
-## Balance between Classification and Contrastive Loss
-We add an coefficient $\beta$ on the contrastive loss ($\mathcal{L}_1$ in the paper) to see how the contrastive loss effect on the finall prediction. The results are shown as below. We can see that the performance is further enhanced with a proper coefficient. However, the contribution of category loss (cross entropy) is dominant. And the contrastive loss we disigned is to ensure the information from homologic samples (samples of the same subject) more alike. This mechanism is in line with the assuption that the brain state of a person is stable. Thus, it works as an adaptive average on the homologic samples to diminish the random error while keeping the useful information for prediction.
-![BNVis](./beta.png)
-
-We also recognize a record error of inter-subject prediction on DynHCP Gender in the submitted paper and corrected it in the results above. We will fix this error in the final edition. Sorry for all the misinformation!
 
 ## Environment
 - cuda 11.8
