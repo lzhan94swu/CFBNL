@@ -1,8 +1,5 @@
 import torch.nn as nn
 
-from pool_utils import *
-
-
 class SetTransformer(nn.Module):
     def __init__(self, dim_input, num_outputs, dim_output,
             num_inds=32, dim_hidden=128, num_heads=4, ln=False):
