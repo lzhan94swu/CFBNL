@@ -4,7 +4,6 @@ import argparse
 
 from models import *
 from gnn_model import *
-from utils import *
 import configs
 
 def main(args):
