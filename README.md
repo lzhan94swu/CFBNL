@@ -1,4 +1,4 @@
-# **Offical Code for CFBNL submitted to ICDE 25**
+# **Offical Code for GIM submitted to ICDE 25**
 
 ## Description
 **Contrastive Functional Brain Network Learning (CFBNL)** is designed to automatically learn brain network structures according to 4 distinct research scales, namely sample-scale, subject-scale, group-scale and group-scale, respectively. The description and typical scenario of these four scales are as follow:
