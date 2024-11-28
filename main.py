@@ -8,41 +8,6 @@ from utils import *
 import configs
 
 def main(args):
-    # about dataset
-    data_name = args.data_name
-    if data_name == 'bciv' or data_name == 'TUDataset' or data_name == 'DynHCP':
-        sub_data_type = args.sub_data_type
-    else:
-        sub_data_type = None
-    split_type = args.split_type
-    if split_type == 'loocv':
-        test_ind = args.test_ind
-    net_type = args.net_type
-
-    # about model
-    conv = args.conv
-    read_out_type = args.read_out_type
-    num_edges = args.num_edges
-    hidden_feats = args.hidden_feats
-    out_feats = args.out_feats
-    use_init_struc = args.use_init_struc
-    if use_init_struc:
-        net_type = 'sample'
-    with_contrast = args.with_contrast
-    cuda_device = args.cuda
-    structure_learning = args.structure_learning
-
-    if with_contrast == True:
-        contrast = 'contrast'
-    else:
-        contrast = 'no_contrast'
-
-    # about training
-    lr = args.lr
-    epochs = args.epochs
-    batch_size = args.batch_size
-    patience_threashold = args.patience_threashold
-
     # Set device
     device = torch.device(cuda_device if torch.cuda.is_available() else 'cpu')
 
@@ -290,31 +255,4 @@ if __name__ == '__main__':
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.cuda.empty_cache()
 
-    if args.with_contrast == True:
-        contrast = 'contrast'
-    else:
-        contrast = 'no_contrast'
-
-    # accs = []
-    if args.data_name == 'TUDataset' or args.data_name == 'DynHCP':
-        save_dir = f"./{contrast}_training_process/{args.data_name}_{args.sub_data_type}_{args.split_type}_{args.net_type}_{args.conv}/"
-    else:
-        save_dir = f"./{contrast}_training_process/{args.data_name}_{args.split_type}_{args.net_type}_{args.conv}/"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    for times in range(1):
-        train_loss_rec, val_loss_rec, test_loss_rec, val_acc_rec, test_acc_rec, contrastive_loss_rec, Final_accuracy = main(args)
-        torch.cuda.empty_cache()
-        if args.data_name == 'TUDataset' or args.data_name == 'DynHCP':
-            print("Final Test Accuracy of conv {} on data {}-{}: {}\n".format(args.conv, args.data_name, args.sub_data_type, Final_accuracy))
-        else:
-            print("Final Test Accuracy of conv {} on data {}: {}\n".format(args.conv, args.data_name, Final_accuracy))
-        # accs.append(Final_accuracy)
-        training_process = {'train_loss_rec': train_loss_rec, 'val_loss_rec': val_loss_rec, 'test_loss_rec': test_loss_rec, 'val_acc_rec': val_acc_rec, 'test_acc_rec': test_acc_rec, 'contrastive_loss_rec': contrastive_loss_rec}
-
-        with open(save_dir + "/training_process_{}.pkl".format(times), 'wb') as f:
-            pickle.dump(training_process, f)
-    # print('Avg acc: {}, std: {}'.format(np.mean(accs), np.std(accs)))
-        with open(save_dir + "/results.txt", 'w') as f:
-            f.writelines('Avg acc: {}\n'.format(np.mean(Final_accuracy)))
-    torch.cuda.empty_cache()
+    main(args)
