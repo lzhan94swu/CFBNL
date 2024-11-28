@@ -37,7 +37,7 @@ class GIM(nn.Module):
             network_structure = torch.squeeze(selected_nets)
 
             # Convert network_structure to adjacency matrix
-            adj_matrix = self.gumbel_softkmax(network_structure, k=self.num_edges, hard=True)
+            adj_matrix = self.gumbel_sigmoid(network_structure, k=self.num_edges, hard=True)
 
         embeddings = self.gnn(x, adj_matrix)
 
@@ -45,7 +45,7 @@ class GIM(nn.Module):
 
         return output, embeddings, adj_matrix
 
-    def gumbel_softkmax(self, logits: Tensor, tau: float = 0.5, k: int = 20, hard: bool = False) -> Tensor:
+    def gumbel_sigmoid(self, logits: Tensor, tau: float = 0.5, k: int = 20, hard: bool = False) -> Tensor:
         gumbels = (
             -torch.empty_like(logits, memory_format=torch.legacy_contiguous_format).exponential_().log()
         )  # ~Gumbel(0,1)
@@ -61,42 +61,27 @@ class GIM(nn.Module):
                 index = y_soft_tmp.topk(k)[1]
                 y_hard = torch.zeros_like(logits.view_as(y_soft_tmp), memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
             else:
-
+                # BBA
                 B, N, M = y_soft.shape
                 device = y_soft.device
 
-                # 展平每个矩阵
-                batch_flat = y_soft.view(B, -1)  # 形状 (B, N*M)
+                batch_flat = y_soft.view(B, -1) 
 
-                # 对每个矩阵排序
-                sorted_values, sorted_indices = torch.sort(batch_flat, dim=1, descending=True)  # 形状 (B, N*M)
+                sorted_values, sorted_indices = torch.sort(batch_flat, dim=1, descending=True) 
 
-                # 生成每个矩阵的 k 索引范围
-                range_indices = torch.arange(N*M, device=device).unsqueeze(0).expand(B, -1)  # 形状 (B, N*M)
-                k_expand = k.unsqueeze(1)  # 形状 (B, 1)
-                mask = range_indices < k_expand  # 形状 (B, N*M)
+                range_indices = torch.arange(N*M, device=device).unsqueeze(0).expand(B, -1) 
+                k_expand = k.unsqueeze(1)  
+                mask = range_indices < k_expand  
 
-                # 创建一个全零的张量来存储结果
-                output_flat = torch.zeros_like(batch_flat)  # 形状 (B, N*M)
+                output_flat = torch.zeros_like(batch_flat) 
 
-                # 只保留每个矩阵的 top-k 元素，其余置零
-                topk_values = sorted_values * mask.float()  # 形状 (B, N*M)
+                topk_values = sorted_values * mask.float() 
 
-                # 获取排序后的索引，并在原始位置上放置 top-k 元素
                 output_flat.scatter_(1, sorted_indices, 1.0)
 
-                # 将结果重新 reshape 回原始矩阵形状
-                # y_hard = output_flat.view(B, N, M)
-
-
-
-                # index = y_soft_tmp.topk(k)[1]
-
-                # y_hard = torch.zeros_like(logits.view_as(y_soft_tmp), memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
                 y_hard = output_flat.view_as(logits)
             y_hard = (y_hard + y_hard.transpose(1, 2)).clamp(0, 1)
             ret = y_hard - y_soft.detach() + y_soft
         else:
-            # Reparametrization trick.
             ret = y_soft
         return ret, y_soft
