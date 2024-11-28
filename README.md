@@ -9,7 +9,7 @@
 ![Research Scales](./scale.png)
 
 Multi-scale functional brain network structure learning can be described as follow:
-![Research Scales](./Scenes.png)
+![Research Scales](./Scene.png)
 
 The framework of **GIM** is depicted as follow:
 ![CFBNL](./Frame.png)
